@@ -82,6 +82,7 @@ struct PngChunk {
     chunk_data: Vec<u8>,
     crc: u32,
 }
+
 impl From<PngChunk> for Vec<u8> {
     fn from(mut chunk: PngChunk) -> Vec<u8> {
         let mut v: Vec<u8> = Vec::with_capacity(std::mem::size_of::<PngChunk>());
@@ -103,6 +104,7 @@ struct IHDRChunk {
     filter_method: u8,
     interlace_method: u8,
 }
+
 impl From<IHDRChunk> for Vec<u8> {
     fn from(chunk: IHDRChunk) -> Vec<u8> {
         let mut v = Vec::with_capacity(std::mem::size_of::<IHDRChunk>());

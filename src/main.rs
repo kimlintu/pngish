@@ -1,32 +1,37 @@
-use std::error::Error;
 use pngish::{Picture, RGBPixel, PngImage};
 
 fn main() {
-    let side_len: u32 = 256;
+	let width = 256;
+	let height = 256;
 
-    let mut painting = Picture { 
-        pixels: Vec::new(),
-        width: side_len,
-        height: side_len,
-    };
+    let mut break_i = width;
 
-    for y in 0..side_len {
-        for x in 0..side_len {
-            let pixel = RGBPixel { red: 255, green: x as u8, blue: y as u8 };
-            painting.pixels.push(pixel);
+	let mut pixels = Vec::new();
+    for _ in 0..height {
+        for _ in 0..break_i {
+            let pixel = RGBPixel { red: 255, green: 0, blue: 0 };
+            pixels.push(pixel);
         }
+
+        for _ in break_i..width {
+            let pixel = RGBPixel { red: 0, green: 255, blue: 0 };
+            pixels.push(pixel);
+        }
+
+        break_i -= 1;
     }
 
-    let png = PngImage::new(&painting);
-    //println!("{:?}", png.data);
+    let picture = Picture { 
+        pixels,
+        width,
+        height,
+    };
 
-    // write png bytes to a file
+    let png = PngImage::new(&picture);
 
     use std::fs::File;
     use std::io::Write;
-    let mut file = File::create("test.png").unwrap();
+    let mut file = File::create("examples/example.png").unwrap();
     file.write_all(&png.signature).unwrap();
     file.write_all(&png.data).unwrap();
-
-    println!("hello");
 }
