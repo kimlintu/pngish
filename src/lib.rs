@@ -1,8 +1,11 @@
+/// Structure holding the PNG image data.
 pub struct PngImage {
     pub signature: [u8; 8],
     pub data: Vec<u8>,
 }
+
 impl PngImage {
+    /// Creates a PngImage holding the PNG image data based on the data provided.
     pub fn new(picture: &Picture) -> PngImage {
         PngImage { 
             signature: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
@@ -115,12 +118,14 @@ impl From<IHDRChunk> for Vec<u8> {
     }
 }
 
+/// The original picture data that is to be transformed into a PNG image.
 pub struct Picture {
     pub pixels: Vec<RGBPixel>,
     pub width: u32, 
     pub height: u32, 
 }
 
+/// A pixel with RGB fields.
 pub struct RGBPixel {
     pub red: u8,
     pub green: u8,
