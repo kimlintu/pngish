@@ -83,7 +83,7 @@ impl From<&Picture> for Vec<u8> {
                 pixel_i += 1;
             }
         }
-        let compressed_img_data = miniz_oxide::deflate::compress_to_vec(&pixels, 6);
+        let mut compressed_img_data = deflate::deflate_bytes_zlib(&pixels);
         let idat_chunk = PngChunk::new_as_bytes(String::from("IDAT"), compressed_img_data);
         picture_bytes.extend_from_slice(&idat_chunk);
 
