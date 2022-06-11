@@ -34,4 +34,7 @@ fn main() {
     let mut file = File::create("examples/example.png").unwrap();
     file.write_all(&png.signature).unwrap();
     file.write_all(&png.data).unwrap();
+
+    //TODO: incorrect bytes in compression header
+    //TODO: crc
 }

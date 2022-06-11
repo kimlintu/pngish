@@ -1,4 +1,41 @@
-/// Structure holding the PNG image data.
+// Source: http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html
+fn gen_crc_table() -> Vec<u32> {
+    let mut table = Vec::with_capacity(256);
+
+    let what: u32 = 0xEDB88320;
+    let mut c: u32;
+
+    for n in 0..256 {
+        c = u32::try_from(n).unwrap();
+        for _ in 0..8 {
+            match c & 1 {
+                1 => {
+                    c = what ^ (c >> 1);
+                }
+                _ => {
+                    c = c >> 1;
+                }
+            }
+        }
+        table.push(c);
+    }
+
+    table
+}
+
+// Source: http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html
+fn gen_crc(crc: u32, buf: &[u8]) -> u32 {
+    let mut c = crc;
+
+    let table = gen_crc_table();
+
+    for n in 0..buf.len() {
+        c = table[usize::try_from((c ^ u32::try_from(buf[n]).unwrap()) & 0xFF).unwrap()] ^ (c >> 8);
+    }
+
+    c ^ 0xFFFFFFFF
+}
+
 pub struct PngImage {
     pub signature: [u8; 8],
     pub data: Vec<u8>,
@@ -28,14 +65,7 @@ impl From<&Picture> for Vec<u8> {
             filter_method: 0,
             interlace_method: 0,
         };
-        let ihdr_bytes = Vec::from(ihdr);
-
-        let ihdr_chunk = PngChunk {
-            data_len: u32::try_from(ihdr_bytes.len()).unwrap().to_be_bytes(),
-            chunk_type: [b'I', b'H', b'D', b'R'],
-            chunk_data: ihdr_bytes,
-            crc: 3 // TODO: calculate crc
-        };
+        let ihdr_chunk = PngChunk::new_as_bytes(String::from("IHDR"), Vec::from(ihdr));
         picture_bytes.extend_from_slice(&Vec::from(ihdr_chunk));
 
         // Our IDAT chunks that will contain compressed image data
@@ -54,23 +84,12 @@ impl From<&Picture> for Vec<u8> {
             }
         }
         let compressed_img_data = miniz_oxide::deflate::compress_to_vec(&pixels, 6);
+        let idat_chunk = PngChunk::new_as_bytes(String::from("IDAT"), compressed_img_data);
+        picture_bytes.extend_from_slice(&idat_chunk);
 
-        let idat_chunk = PngChunk {
-            data_len: u32::try_from(compressed_img_data.len()).unwrap().to_be_bytes(),
-            chunk_type: [b'I', b'D', b'A', b'T'],
-            chunk_data: compressed_img_data,
-            crc: 3 // TODO: calculate crc
-        };
-        picture_bytes.extend_from_slice(&Vec::from(idat_chunk));
-
-        // The IEND chunk marks EOF
-        let iend_chunk = PngChunk {
-            data_len: [0, 0, 0, 0],
-            chunk_type: [b'I', b'E', b'N', b'D'],
-            chunk_data: Vec::new(),
-            crc: 3 // TODO: calculate crc
-        };
-        picture_bytes.extend_from_slice(&Vec::from(iend_chunk));
+        // The IEND chunk marks the EOF
+        let iend_chunk = PngChunk::new_as_bytes(String::from("IEND"), Vec::new()); 
+        picture_bytes.extend_from_slice(&iend_chunk);
 
         picture_bytes
     }
@@ -81,6 +100,29 @@ struct PngChunk {
     chunk_type: [u8; 4],
     chunk_data: Vec<u8>,
     crc: u32,
+}
+
+impl PngChunk {
+    fn new_as_bytes(chunk_type: String, mut chunk_data: Vec<u8>) -> Vec<u8> {
+        let mut bytes: Vec<u8> = Vec::new();
+
+        let data_len = chunk_data.len();
+        bytes.extend_from_slice(&u32::try_from(data_len).unwrap().to_be_bytes());
+
+        let s = &chunk_type;
+        let chunk_type = chunk_type.as_bytes();
+        bytes.extend_from_slice(chunk_type);
+
+        bytes.append(&mut chunk_data);
+
+        // The CRC is calculated based on the previous data in the chunk, excluding the data length
+        // (first 4 bytes).
+        let crc = gen_crc(0xFFFFFFFF, &bytes[4..bytes.len()]);
+        println!("crc for {} is {:#x}", s, crc);
+        bytes.extend_from_slice(&u32::try_from(crc).unwrap().to_be_bytes());
+
+        bytes
+    }
 }
 
 impl From<PngChunk> for Vec<u8> {
